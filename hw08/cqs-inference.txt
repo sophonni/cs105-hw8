@@ -34,23 +34,23 @@ the components of nano-ML's type system.
     Please identify, from the preceding list, what each symbol stands
     for in the theory of nano-ML:
 
-    (a) τ
+    (a) τ 
 
-    > ...your answer here...
+    > a type
 
     (b) σ
     
-    > 
+    > type scheme
 
     (c) Γ
     
-    > 
+    > a mapping from names to type schemes
 
     And finally, 
 
     (d) Say briefly what, in nano-ML, is the difference between τ and σ:
 
-    > 
+    > Tau is monomorphic and rho is polymorphic. --> TODO: double check
 
     _You are preparing for exercise 3._
 
@@ -103,17 +103,18 @@ assistance!
  2. (a) Yes or no: does the substitution `(α → sym) ∘ (β → bool) ∘ (γ → int)`
         replace type variable `α` with type `sym`?
 
-        >
+        > yes
 
     (b) Yes or no: does the substitution `(α → sym) ∘ (β → bool) ∘ (γ → int)`
         replace type variable `β` with type `bool`?
 
-        >
+        > yes
 
-    (c) Yes or no: does the substitution `(α → sym) ∘ (β → bool) ∘ (γ → int)`
+    (c) Yes or no: does the substitution `(α → sym) ∘ (β → bool) ∘ (γ -> int)`
         leave the type `γ list` unchanged?
 
-        >
+        > No, b/c evaluating the composite function on some type τ will results
+        > in γ being assign to type int.
 
     (d) Which of the following nano-ML type expressions, written in concrete
         nano-ML syntax, are *instances* of the polymorphic type scheme 
@@ -125,19 +126,19 @@ assistance!
         
         `(list int)`   True or False
 
-        >
+        >  True
 
         `(list (list int))`  True or False
 
-        >
+        > True --> TODO: double check
 
         `((list (list int)) -> int)`  True or False
 
-        >
+        > True --> TODO: double check
 
         `((list int) int -> list)`  True or False
 
-        >
+        > False --> TODO: double check
 
     _You have a foundation on which to build for exercise 2._
 
