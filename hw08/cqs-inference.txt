@@ -1,4 +1,4 @@
-Reading comprehension for Type Inference
+fReading comprehension for Type Inference
 =========================================
 
 ###  Instructions ###
@@ -370,19 +370,19 @@ references to that that function in this reading call it `too-poly`.
 
     (a) If τ' is β list, what are its free type variables?
 
-        >
+        > (TODO: come back)
 
 
     (b) What set in this example plays the role of `{ α₁, ..., αₙ }` in Milner's
         Let, which is ftv(τ')-ftv(Γ)?
 
-        >
+        > {} - {β} (TODO: come back)
     
 
     (c) What is the *type scheme* to which `empty-list` (playing x) is 
         bound in the extended environment which is used to check $e$?
 
-        >
+        > (TODO: come back)
 
 
     _You are ready for all of exercise 3._
@@ -392,3 +392,4 @@ TIME TRACK:
   1:30 pm - 2:30 pm
   7:30 pm - 8:27 pm
   10:00 am - 11:37 am
+  3:00 pm - 4:10 pm
