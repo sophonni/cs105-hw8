@@ -1649,7 +1649,15 @@ fun unsatisfiableEquality (t1, t2) =
          | _ => raise InternalError "failed to synthesize canonical type"
   end
 (* constraint solving ((prototype)) 437b *)
-fun solve c = raise LeftAsExercise "solve"
+fun solve TRIVIAL = idsubst
+  | solve (TYVAR a ~ TYVAR b) =  a |--> TYVAR b
+  | solve (TYVAR a ~ TYCON b) = a |--> TYCON b
+  | solve (TYCON a ~ TYVAR b) = b |--> TYCON a
+  | solve (TYCON a ~ TYCON b) =  
+      if eqType(TYCON a, TYCON b) then idsubst else raise TypeError "Ill-Type"
+  (* | solve (TYVAR a ~ CONAPP b ) = raise LeftAsExercise "testing"
+  | solve (TYVAR a ~ CONAPP b)= raise LeftAsExercise "testing" *)
+  | solve _ = raise TypeError "testing"
 (* type declarations for consistency checking *)
 val _ = op solve : con -> subst
 (* constraint solving ((elided)) (THIS CAN'T HAPPEN -- claimed code was not used) *)
@@ -1657,6 +1665,25 @@ fun hasNoSolution c = (solve c; false) handle TypeError _ => true
 fun hasGoodSolution c = solves (solve c, c) handle TypeError _ => false
 val hasSolution = not o hasNoSolution : con -> bool
 fun solutionEquivalentTo (c, theta) = eqsubst (solve c, theta)
+         
+val () = Unit.checkAssert "bool ~ bool can be solved"
+         (fn () => hasSolution (TYVAR "a" ~ TYVAR "b"))
+         
+val () = Unit.checkAssert "bool ~ bool can be solved"
+         (fn () => hasSolution (TYVAR "a" ~ booltype))
+
+val () = Unit.checkAssert "bool ~ bool can be solved"
+         (fn () => hasSolution (inttype ~ TYVAR "b"))
+
+val () = Unit.checkAssert "bool ~ bool can be solved"
+         (fn () => hasSolution (booltype ~ booltype))
+val () = Unit.checkAssert "bool ~ bool can be solved"
+         (fn () => hasNoSolution (booltype ~ inttype))
+
+val () = Unit.checkAssert "trival"
+         (fn () => hasSolution (TRIVIAL))
+
+val () = Unit.reportWhenFailures ()
 (* utility functions for {\uml} S435c *)
 (* filled in when implementing uML *)
 (* exhaustiveness analysis for {\uml} S435b *)
@@ -2552,7 +2579,8 @@ val primitiveBasis =
                                funtype ([listtype alpha], listtype alpha)) :: 
                      [])
   end
-val predefs = 
+val predefined_included = false
+val predefs = if not predefined_included then [] else
                [ ";  predefined {\\nml} functions S423b "
                , "(define bind (x y alist)"
                , "  (if (null? alist)"
