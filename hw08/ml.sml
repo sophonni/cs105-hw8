@@ -1654,23 +1654,27 @@ fun solve TRIVIAL = idsubst
   | solve (TYVAR a ~ TYCON b) = a |--> TYCON b
   | solve (TYCON a ~ TYVAR b) = b |--> TYCON a
   | solve (TYCON a ~ TYCON b) =  
-      if eqType(TYCON a, TYCON b) then idsubst else unsatisfiableEquality (TYCON a, TYCON b)
+      if eqType(TYCON a, TYCON b) then
+        idsubst
+      else
+        unsatisfiableEquality (TYCON a, TYCON b)
   | solve (CONAPP a ~ TYCON b)  = unsatisfiableEquality (CONAPP a, TYCON b)
   | solve(TYCON a ~ CONAPP b) = unsatisfiableEquality (TYCON a, CONAPP b)
+  | solve(TYVAR a ~ CONAPP b) =
+    let val freeVarSet = freetyvars (CONAPP b)
+        (* this conditional check handle the 1st 2 bullet points mention in the text (pg. 429) *)
+        (* when they mentioned "then", they're just proving that it works *)
+    in if not (member a freeVarSet) orelse (eqType (TYVAR a, CONAPP b)) then
+          a |--> CONAPP b
+
+        (* reason why we can do an else here is b/c in our if-case, we're
+        doing a check for both not mention OR eqaul. if non of the 2
+        conditional is satisfied, it'll automatically enter the else case *)
+        else
+          unsatisfiableEquality (TYCON a, CONAPP b)
+    end 
   | solve (CONAPP a ~ CONAPP b) = raise LeftAsExercise "testing"
   | solve(CONAPP a ~ TYVAR b) =  raise LeftAsExercise "testing"
-  | solve(TYVAR a ~ CONAPP b) =  
-    let val freeVarSet = freetyvars (CONAPP b)
-    in if member a freeVarSet then
-          (a ~ b)
-        (*if a is in the set but not equal to a (insert what frucntion) then raise type error*)
-        (*if conapp is equal to a then idsubst*)
-        else
-          a |--> CONAPP b
-    end 
-  (*get set of free type variables using freetyvars*)
-  (*iterate through the free types variables and check for a*)
-  (*if a is not in the set of free type variables, perform mapping tyvar to con app *)
   
 
   | solve _ = raise TypeError "Unsolved-Constraint"
@@ -1693,20 +1697,6 @@ val () = Unit.checkAssert "bool ~ bool can be solved"
 
 val () = Unit.checkAssert "bool ~ bool can be solved"
          (fn () => hasSolution (booltype ~ booltype))
-
-val () = Unit.checkAssert "conapp ~ tycon can be solved"
-         (fn () => hasNoSolution (CONAPP (TYCON "list", [TYVAR "a"]) ~ TYCON "int"))
-
-
-
-
-val () = Unit.checkAssert " tycon ~ conapp can be solved"
-         (fn () => hasNoSolution (TYCON "int" ~ CONAPP (TYCON "list", [TYVAR "a"]) ))
-
-
-
-
-
 val () = Unit.checkAssert "bool ~ bool can be solved"
          (fn () => hasNoSolution (booltype ~ inttype))
 
@@ -1721,6 +1711,14 @@ val () = Unit.checkAssert "bool ~ bool is solved by the identity substitution"
 val () = Unit.checkAssert "bool ~ 'a is solved by 'a |--> bool"
          (fn () => solutionEquivalentTo (booltype ~ TYVAR "'a", 
                                          "'a" |--> booltype))
+
+
+val () = Unit.checkAssert "conapp ~ tycon can't be solved"
+         (fn () => hasNoSolution (CONAPP (TYCON "list", [TYVAR "a"]) ~ TYCON "int"))
+val () = Unit.checkAssert " tycon ~ conapp can't be solved"
+         (fn () => hasNoSolution (TYCON "int" ~ CONAPP (TYCON "list", [TYVAR "a"])))
+val () = Unit.checkAssert " tycon ~ conapp can't be solved"
+         (fn () => hasNoSolution (TYCON "a" ~ CONAPP (TYCON "list", [TYVAR "a"])))
                                     
 
 val () = Unit.reportWhenFailures ()
