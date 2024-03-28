@@ -1673,9 +1673,20 @@ fun solve TRIVIAL = idsubst
         else
           unsatisfiableEquality (TYCON a, CONAPP b)
     end 
+  | solve(CONAPP a ~ TYVAR b) =
+      let val freeVarSet = freetyvars (CONAPP a)
+          (* this conditional check handle the 1st 2 bullet points mention in the text (pg. 429) *)
+          (* when they mentioned "then", they're just proving that it works *)
+      in if not (member b freeVarSet) orelse (eqType (CONAPP a, TYVAR b)) then
+            b |--> CONAPP a
+
+          (* reason why we can do an else here is b/c in our if-case, we're
+          doing a check for both not mention OR eqaul. if non of the 2
+          conditional is satisfied, it'll automatically enter the else case *)
+          else
+            unsatisfiableEquality (CONAPP a, TYVAR b)
+      end 
   | solve (CONAPP a ~ CONAPP b) = raise LeftAsExercise "testing"
-  | solve(CONAPP a ~ TYVAR b) =  raise LeftAsExercise "testing"
-  
 
   | solve _ = raise TypeError "Unsolved-Constraint"
 (* type declarations for consistency checking *)
@@ -1719,7 +1730,22 @@ val () = Unit.checkAssert " tycon ~ conapp can't be solved"
          (fn () => hasNoSolution (TYCON "int" ~ CONAPP (TYCON "list", [TYVAR "a"])))
 val () = Unit.checkAssert " tycon ~ conapp can't be solved"
          (fn () => hasNoSolution (TYCON "a" ~ CONAPP (TYCON "list", [TYVAR "a"])))
-                                    
+
+val () = Unit.checkAssert " tyvar ~ conapp that can be solve"
+         (fn () => hasSolution (TYVAR "a" ~ listtype (TYVAR "j")))
+val () = Unit.checkAssert " tyvar ~ conapp that can't be solve"
+         (fn () => hasNoSolution (TYVAR "a" ~ listtype (TYVAR "a")))
+(*TODO: how can we test our orelse case from TYVAR ~ CONAPP; can we even test it*)
+(* val () = Unit.checkAssert " tyvar ~ conapp that can be solve"
+         (fn () => hasNoSolution (TYVAR () ~ listtype (TYVAR "a")))*)
+
+val () = Unit.checkAssert " conapp ~ tyvar that can be solve"
+         (fn () => hasSolution (listtype (TYVAR "j") ~ TYVAR "a"))
+val () = Unit.checkAssert " conapp ~ tyvar that can't be solve"
+         (fn () => hasNoSolution (listtype (TYVAR "a") ~ TYVAR "a"))
+(*TODO: how can we test our orelse case from CONAPP ~ TYVAR; can we even test it*)
+(* val () = Unit.checkAssert " tyvar ~ conapp that can be solve"
+         (fn () => hasNoSolution (listtype (TYVAR "a") ~ TYVAR "a"))*)
 
 val () = Unit.reportWhenFailures ()
 (* utility functions for {\uml} S435c *)
