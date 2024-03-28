@@ -1654,10 +1654,26 @@ fun solve TRIVIAL = idsubst
   | solve (TYVAR a ~ TYCON b) = a |--> TYCON b
   | solve (TYCON a ~ TYVAR b) = b |--> TYCON a
   | solve (TYCON a ~ TYCON b) =  
-      if eqType(TYCON a, TYCON b) then idsubst else raise TypeError "Ill-Type"
-  (* | solve (TYVAR a ~ CONAPP b ) = raise LeftAsExercise "testing"
-  | solve (TYVAR a ~ CONAPP b)= raise LeftAsExercise "testing" *)
-  | solve _ = raise TypeError "testing"
+      if eqType(TYCON a, TYCON b) then idsubst else unsatisfiableEquality (TYCON a, TYCON b)
+  | solve (CONAPP a ~ TYCON b)  = unsatisfiableEquality (CONAPP a, TYCON b)
+  | solve(TYCON a ~ CONAPP b) = unsatisfiableEquality (TYCON a, CONAPP b)
+  | solve (CONAPP a ~ CONAPP b) = raise LeftAsExercise "testing"
+  | solve(CONAPP a ~ TYVAR b) =  raise LeftAsExercise "testing"
+  | solve(TYVAR a ~ CONAPP b) =  
+    let val freeVarSet = freetyvars (CONAPP b)
+    in if member a freeVarSet then
+          (a ~ b)
+        (*if a is in the set but not equal to a (insert what frucntion) then raise type error*)
+        (*if conapp is equal to a then idsubst*)
+        else
+          a |--> CONAPP b
+    end 
+  (*get set of free type variables using freetyvars*)
+  (*iterate through the free types variables and check for a*)
+  (*if a is not in the set of free type variables, perform mapping tyvar to con app *)
+  
+
+  | solve _ = raise TypeError "Unsolved-Constraint"
 (* type declarations for consistency checking *)
 val _ = op solve : con -> subst
 (* constraint solving ((elided)) (THIS CAN'T HAPPEN -- claimed code was not used) *)
@@ -1667,7 +1683,7 @@ val hasSolution = not o hasNoSolution : con -> bool
 fun solutionEquivalentTo (c, theta) = eqsubst (solve c, theta)
          
 val () = Unit.checkAssert "bool ~ bool can be solved"
-         (fn () => hasSolution (TYVAR "a" ~ TYVAR "b"))
+         (fn () => hasSolution (alpha ~ beta))
          
 val () = Unit.checkAssert "bool ~ bool can be solved"
          (fn () => hasSolution (TYVAR "a" ~ booltype))
@@ -1677,11 +1693,35 @@ val () = Unit.checkAssert "bool ~ bool can be solved"
 
 val () = Unit.checkAssert "bool ~ bool can be solved"
          (fn () => hasSolution (booltype ~ booltype))
+
+val () = Unit.checkAssert "conapp ~ tycon can be solved"
+         (fn () => hasNoSolution (CONAPP (TYCON "list", [TYVAR "a"]) ~ TYCON "int"))
+
+
+
+
+val () = Unit.checkAssert " tycon ~ conapp can be solved"
+         (fn () => hasNoSolution (TYCON "int" ~ CONAPP (TYCON "list", [TYVAR "a"]) ))
+
+
+
+
+
 val () = Unit.checkAssert "bool ~ bool can be solved"
          (fn () => hasNoSolution (booltype ~ inttype))
 
+val () = Unit.checkAssert "bool ~ bool can be solved"
+         (fn () => hasNoSolution (listtype booltype ~ booltype))
+
 val () = Unit.checkAssert "trival"
          (fn () => hasSolution (TRIVIAL))
+
+val () = Unit.checkAssert "bool ~ bool is solved by the identity substitution"
+         (fn () => solutionEquivalentTo (booltype ~ booltype, idsubst))
+val () = Unit.checkAssert "bool ~ 'a is solved by 'a |--> bool"
+         (fn () => solutionEquivalentTo (booltype ~ TYVAR "'a", 
+                                         "'a" |--> booltype))
+                                    
 
 val () = Unit.reportWhenFailures ()
 (* utility functions for {\uml} S435c *)
