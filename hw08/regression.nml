@@ -1,0 +1,9 @@
+(check-type 3 int)
+(check-type #t bool)
+(check-type 'hello sym)
+
+(check-type (if #t 1 2) int)
+(check-type (if #f #t #f) bool)
+(check-type (if #f 'a 'b) sym)
+(check-type-error (if 1 2 3))
+(check-type-error (if #t #t 3))

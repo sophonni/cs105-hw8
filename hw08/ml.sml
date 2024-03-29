@@ -1800,8 +1800,22 @@ fun typeof (e, Gamma) =
             in  (tau :: taus, c /\ c')
             end
 
+    (* value = SYM       of name
+          | NUM       of int
+          | BOOLV     of bool
+          | NIL
+          | PAIR      of value * value
+          | CLOSURE   of lambda * value env ref
+          | PRIMITIVE of primop *)
+          
 (* function [[literal]], to infer the type of a literal constant ((prototype)) 438b *)
-      fun literal _ = raise LeftAsExercise "literal"
+      fun literal (NUM _)   = (inttype, TRIVIAL)
+        | literal (BOOLV _) = (booltype, TRIVIAL)
+        | literal (SYM _)   = (symtype, TRIVIAL)
+        | literal (PAIR (v, vp)) = raise LeftAsExercise "testing"
+        | literal NIL =  raise LeftAsExercise "testing"
+        | literal (PRIMITIVE _) = raise BugInTypeInference "not needed"
+        | literal (CLOSURE _ ) = raise BugInTypeInference "not needed"
 
 (* function [[ty]], to infer the type of a \nml\ expression, given [[Gamma]] 438c *)
       fun ty (LITERAL n) = literal n
@@ -1821,7 +1835,17 @@ fun typeof (e, Gamma) =
         | ty (LETX (LETSTAR, (b :: bs), body)) = 
             ty (LETX (LET, [b], LETX (LETSTAR, bs, body)))
         (* more alternatives for [[ty]] ((prototype)) 438g *)
-        | ty (IFX (e1, e2, e3))        = raise LeftAsExercise "type for IFX"
+        | ty (IFX (e1, e2, e3))        = 
+          let val tau1 = ty e1
+              val tau2 = ty e2
+              val tau3 = ty e3
+              val resultingConstraint = conjoinConstraints [snd tau1, snd tau2, snd tau3] 
+          in 
+            if eqType(fst tau1, booltype) andalso eqType(fst tau2, fst tau3) then
+              (fst tau2, resultingConstraint)
+            else
+              raise TypeError "ill-type"
+          end
         | ty (BEGIN es)                = raise LeftAsExercise "type for BEGIN"
         | ty (LAMBDA (formals, body))  = raise LeftAsExercise "type for LAMBDA"
         | ty (LETX (LET, bs, body))    = raise LeftAsExercise "type for LET"
