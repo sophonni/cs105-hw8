@@ -1650,7 +1650,17 @@ fun unsatisfiableEquality (t1, t2) =
   end
 (* constraint solving ((prototype)) 437b *)
 fun solve TRIVIAL = idsubst
-  | solve (TYVAR a ~ TYVAR b) =  a |--> TYVAR b
+  | solve (a /\ b) = 
+    let val theta1 = solve a
+        val theta2 = solve (consubst theta1 b)
+    in
+      compose (theta2, theta1)
+    end
+    (* let val c = conjoinConstraints [a,b]
+    in
+      if eqType(c, a) then *)
+        
+  | solve (TYVAR a ~ TYVAR b) =  a|--> TYVAR b
   | solve (TYVAR a ~ TYCON b) = a |--> TYCON b
   | solve (TYCON a ~ TYVAR b) = b |--> TYCON a
   | solve (TYCON a ~ TYCON b) =  
@@ -1662,9 +1672,9 @@ fun solve TRIVIAL = idsubst
   | solve(TYCON a ~ CONAPP b) = unsatisfiableEquality (TYCON a, CONAPP b)
   | solve(TYVAR a ~ CONAPP b) =
     let val freeVarSet = freetyvars (CONAPP b)
-        (* this conditional check handle the 1st 2 bullet points mention in the text (pg. 429) *)
+        (* this conditional check handle the 1st bullet point mention in the text (pg. 429) *)
         (* when they mentioned "then", they're just proving that it works *)
-    in if not (member a freeVarSet) orelse (eqType (TYVAR a, CONAPP b)) then
+    in if not (member a freeVarSet) then
           a |--> CONAPP b
 
         (* reason why we can do an else here is b/c in our if-case, we're
@@ -1675,9 +1685,9 @@ fun solve TRIVIAL = idsubst
     end 
   | solve(CONAPP a ~ TYVAR b) =
       let val freeVarSet = freetyvars (CONAPP a)
-          (* this conditional check handle the 1st 2 bullet points mention in the text (pg. 429) *)
+          (* this conditional check handle the 1st bullet point mention in the text (pg. 429) *)
           (* when they mentioned "then", they're just proving that it works *)
-      in if not (member b freeVarSet) orelse (eqType (CONAPP a, TYVAR b)) then
+      in if not (member b freeVarSet)then
             b |--> CONAPP a
 
           (* reason why we can do an else here is b/c in our if-case, we're
@@ -1686,9 +1696,13 @@ fun solve TRIVIAL = idsubst
           else
             unsatisfiableEquality (CONAPP a, TYVAR b)
       end 
-  | solve (CONAPP a ~ CONAPP b) = raise LeftAsExercise "testing"
-
-  | solve _ = raise TypeError "Unsolved-Constraint"
+  | solve (CONAPP (a, xs) ~ CONAPP (b, ys)) =
+    let val c1 = a ~ b
+    in
+      solve (c1 /\ ListPair.foldlEq (fn (x, y, accum) => (accum /\ (x ~ y))) TRIVIAL (xs, ys))
+      
+      (* raise TypeError "Unsolved-Constraint" *)
+    end 
 (* type declarations for consistency checking *)
 val _ = op solve : con -> subst
 (* constraint solving ((elided)) (THIS CAN'T HAPPEN -- claimed code was not used) *)
@@ -1696,9 +1710,27 @@ fun hasNoSolution c = (solve c; false) handle TypeError _ => true
 fun hasGoodSolution c = solves (solve c, c) handle TypeError _ => false
 val hasSolution = not o hasNoSolution : con -> bool
 fun solutionEquivalentTo (c, theta) = eqsubst (solve c, theta)
-         
-val () = Unit.checkAssert "bool ~ bool can be solved"
-         (fn () => hasSolution (alpha ~ beta))
+fun isIdempotent pairs =
+    let fun distinct a' (a, tau) = a <> a' andalso not (member a' (freetyvars tau))
+        fun good (prev', (a, tau)::next) =
+              List.all (distinct a) prev' andalso List.all (distinct a) next
+              andalso good ((a, tau)::prev', next)
+          | good (_, []) = true
+    in  good ([], pairs)
+    end
+
+val solve =
+    fn c => let val theta = solve c
+            in  if isIdempotent theta then theta
+                else raise BugInTypeInference "non-idempotent substitution"
+            end
+
+val () =
+  let val c1 = alpha
+      val c2 = beta
+      val testname = constraintString (c1 ~ c2)
+  in Unit.checkAssert testname (fn () => hasSolution (c1 ~ c2))
+  end
          
 val () = Unit.checkAssert "bool ~ bool can be solved"
          (fn () => hasSolution (TYVAR "a" ~ booltype))
@@ -1723,7 +1755,6 @@ val () = Unit.checkAssert "bool ~ 'a is solved by 'a |--> bool"
          (fn () => solutionEquivalentTo (booltype ~ TYVAR "'a", 
                                          "'a" |--> booltype))
 
-
 val () = Unit.checkAssert "conapp ~ tycon can't be solved"
          (fn () => hasNoSolution (CONAPP (TYCON "list", [TYVAR "a"]) ~ TYCON "int"))
 val () = Unit.checkAssert " tycon ~ conapp can't be solved"
@@ -1735,17 +1766,23 @@ val () = Unit.checkAssert " tyvar ~ conapp that can be solve"
          (fn () => hasSolution (TYVAR "a" ~ listtype (TYVAR "j")))
 val () = Unit.checkAssert " tyvar ~ conapp that can't be solve"
          (fn () => hasNoSolution (TYVAR "a" ~ listtype (TYVAR "a")))
-(*TODO: how can we test our orelse case from TYVAR ~ CONAPP; can we even test it*)
-(* val () = Unit.checkAssert " tyvar ~ conapp that can be solve"
-         (fn () => hasNoSolution (TYVAR () ~ listtype (TYVAR "a")))*)
 
 val () = Unit.checkAssert " conapp ~ tyvar that can be solve"
          (fn () => hasSolution (listtype (TYVAR "j") ~ TYVAR "a"))
 val () = Unit.checkAssert " conapp ~ tyvar that can't be solve"
          (fn () => hasNoSolution (listtype (TYVAR "a") ~ TYVAR "a"))
-(*TODO: how can we test our orelse case from CONAPP ~ TYVAR; can we even test it*)
-(* val () = Unit.checkAssert " tyvar ~ conapp that can be solve"
-         (fn () => hasNoSolution (listtype (TYVAR "a") ~ TYVAR "a"))*)
+val () =
+  let val c1 = inttype ~ inttype
+      val c2 = booltype ~ inttype
+      val testname = constraintString (c1 /\ c2)
+  in Unit.checkAssert testname (fn () => hasNoSolution (c1 /\ c2))
+  end
+val () =
+  let val c1 = listtype (TYCON "a")
+      val c2 = listtype (TYCON "b")
+      val testname = constraintString (c1 ~ c2)
+  in Unit.checkAssert testname (fn () => hasNoSolution (c1 ~ c2))
+  end
 
 val () = Unit.reportWhenFailures ()
 (* utility functions for {\uml} S435c *)
