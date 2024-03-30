@@ -1747,7 +1747,7 @@ val () = Unit.checkAssert "bool ~ bool can be solved"
          (fn () => hasNoSolution (listtype booltype ~ booltype))
 
 val () = Unit.checkAssert "trival"
-         (fn () => hasSolution (TRIVIAL))
+         (fn () => hasSolution (TRIVIAL)) 
 
 val () = Unit.checkAssert "bool ~ bool is solved by the identity substitution"
          (fn () => solutionEquivalentTo (booltype ~ booltype, idsubst))
@@ -1846,7 +1846,12 @@ fun typeof (e, Gamma) =
             else
               raise TypeError "ill-type"
           end
-        | ty (BEGIN es)                = raise LeftAsExercise "type for BEGIN"
+        | ty (BEGIN es)                = 
+          let val tn = fst (ty (List.last es))
+              val resultingConstraint = List.foldl (fn (x, accum) => (accum /\ snd (ty x))) TRIVIAL es
+          in
+            (tn, resultingConstraint)
+          end
         | ty (LAMBDA (formals, body))  = raise LeftAsExercise "type for LAMBDA"
         | ty (LETX (LET, bs, body))    = raise LeftAsExercise "type for LET"
         | ty (LETX (LETREC, bs, body)) = raise LeftAsExercise "type for LETREC"

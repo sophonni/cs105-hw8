@@ -7,3 +7,13 @@
 (check-type (if #f 'a 'b) sym)
 (check-type-error (if 1 2 3))
 (check-type-error (if #t #t 3))
+
+(check-type (begin (+ 1 2) (if #t #t #f)) bool)
+(check-type-error (begin (if #f 3 #t) (if #t #t #f)))
+;; (check-type-error (begin (letstar ([x 5]) (if x #t #f)) (if #t 3 4)))
+
+;; (check-type (let* ([x 5] [y (+ x 3)]) y) int)
+;; (check-type-error (begin (let* ([x 2] [y x]) (set y 3))))
+;; (check-type (begin (let ([x 3]) (+ x 5))) int)
+;; (check-type-error (begin (let ([x 3]) (+ x 5)) (if #t (and x #t) x)))
+;; (check-type-error (begin (let ([x 3]) (if x 4 5))))
