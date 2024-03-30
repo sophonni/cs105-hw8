@@ -1841,13 +1841,10 @@ fun typeof (e, Gamma) =
               val tau3 = ty e3
               val resultingConstraint = conjoinConstraints [snd tau1, snd tau2, snd tau3] 
           in 
-            if eqType(fst tau1, booltype) andalso eqType(fst tau2, fst tau3) then
-              (fst tau2, resultingConstraint)
-            else
-              raise TypeError "ill-type"
+              (fst tau2, resultingConstraint /\ fst tau1 ~ booltype /\ fst tau2 ~ fst tau3)
           end
         | ty (BEGIN [])                = (unittype, TRIVIAL)
-        | ty (BEGIN es)                =  (* es can be empty, raise exception *)
+        | ty (BEGIN es)                =
           let val tn = fst (ty (List.last es))
               val resultingConstraint = List.foldl (fn (x, accum) => (accum /\ snd (ty x))) TRIVIAL es
           in
@@ -1862,7 +1859,39 @@ fun typeof (e, Gamma) =
           in
             (funtype (alphas, eTy), resultingConstraint)
           end
-        | ty (LETX (LET, bs, body))    = raise LeftAsExercise "type for LET"
+        | ty (LETX (LET, bs, body))    =
+            let 
+                (* seperate the given 'bs' into a list of 'names' and 'exps' which are the expressions *)
+                val (names, exps) = ListPair.unzip bs
+
+                (* get the type of each expressions and its corresponding constraint *)
+                val expsTyAndConstraintPair =  typesof (exps, Gamma)
+                val expsTypeList =  fst expsTyAndConstraintPair
+                val expsConstraintList = snd expsTyAndConstraintPair
+
+                (* solve the list of constraints in order to generate a single substitution for the whole 'let' expression *)
+                val constraintSubstitution = solve expsConstraintList
+
+                (* process of creating a new constraint 'cPrime' for the whole 'let' expression *)
+                (* do so by applying the substitution generated above onto every alphas which are string, and ensure that each α ~ θα *)
+                val alphas = inter ((dom constraintSubstitution), (freetyvarsGamma Gamma))
+                val toCreateConstraint = (fn (a, xs) => (TYVAR a ~ tysubst constraintSubstitution (TYVAR a)) :: xs)
+                val allConstraints = List.foldl toCreateConstraint [] alphas
+                val cPrime = conjoinConstraints allConstraints
+
+                (* process of generating a list of sigmas *)
+                val unionOfGammaAndCPrime = union ((freetyvarsGamma Gamma), (freetyvarsConstraint cPrime))
+                val toGeneralize = (fn (ty, xs) => (generalize ((tysubst constraintSubstitution ty), unionOfGammaAndCPrime)) :: xs)
+                val sigmas = List.foldl toGeneralize [] expsTypeList
+
+                (* process of extend the environment 'Gamma' in order to evalute the 'body' of the let expression over *)
+                val toUpdateGammma = (fn (x, sigma, gamma) => bindtyscheme (x, sigma, gamma))
+                val newGamma = ListPair.foldrEq toUpdateGammma Gamma (names, sigmas)
+                val (eTy, bodyConstraint) = typeof (body, newGamma)
+                val resultingConstraint = conjoinConstraints [cPrime, bodyConstraint]
+            in 
+              (eTy, resultingConstraint)
+            end
         | ty (LETX (LETREC, bs, body)) = raise LeftAsExercise "type for LETREC"
 (* type declarations for consistency checking *)
 val _ = op typeof  : exp      * type_env -> ty      * con

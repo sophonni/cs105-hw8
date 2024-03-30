@@ -1,7 +1,7 @@
 ;; Testing 'literal'
-(check-type 3 int)
-(check-type #t bool)
-(check-type 'hello sym)
+(check-principal-type 3 int)
+(check-principal-type #t bool)
+(check-principal-type 'hello sym)
 
 ;; Testing 'if'
 (check-type (if #t 1 2) int)
@@ -15,11 +15,27 @@
 (check-type (begin (+ 1 2) (if #t #t #f)) bool)
 (check-type-error (begin (if #f 3 #t) (if #t #t #f)))
 
+;; Testing 'lambda'
+(check-principal-type (lambda (x) (+ x 1)) (int -> int))
+(check-principal-type (begin (lambda () (if #t 3 4))) ( -> int))
+(check-principal-type (lambda (x y) (+ x y)) (int int -> int))
+(check-principal-type (lambda (x y) (if x 4 y)) (bool int -> int))
+(check-type (lambda (x) x) (bool -> bool))
+(check-type (lambda (x y) (+ x y)) (int int -> int))
+(check-type (lambda (x y) (+ x y)) (int int -> int))
+(check-type-error (lambda (x) (cons x x)))
+(check-type-error (lambda () (1)))
 
+;; Testing 'let'
+(check-type (let ([x 3]) (+ x 5)) int)
+(check-type (let ([x 2] [y 3]) (+ x y)) int)
+(check-type (let ([x 2] [y 3]) (< x y)) bool)
+(check-type-error (let ([x #t] [y 3]) (+ x y)))
+(check-type-error (let () (if #t 1 #f)))
+(check-type (let ([x 2] [y 3])
+                ((lambda (x y) (+ x y)) x y)) int)
 ;; (check-type-error (begin (letstar ([x 5]) (if x #t #f)) (if #t 3 4)))
-
 ;; (check-type (let* ([x 5] [y (+ x 3)]) y) int)
 ;; (check-type-error (begin (let* ([x 2] [y x]) (set y 3))))
-;; (check-type (begin (let ([x 3]) (+ x 5))) int)
 ;; (check-type-error (begin (let ([x 3]) (+ x 5)) (if #t (and x #t) x)))
 ;; (check-type-error (begin (let ([x 3]) (if x 4 5))))
