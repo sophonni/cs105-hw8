@@ -1846,13 +1846,21 @@ fun typeof (e, Gamma) =
             else
               raise TypeError "ill-type"
           end
-        | ty (BEGIN es)                = 
+        | ty (BEGIN es)                =  (* es can be empty, raise exception *)
           let val tn = fst (ty (List.last es))
               val resultingConstraint = List.foldl (fn (x, accum) => (accum /\ snd (ty x))) TRIVIAL es
           in
             (tn, resultingConstraint)
           end
-        | ty (LAMBDA (formals, body))  = raise LeftAsExercise "type for LAMBDA"
+        | ty (LAMBDA (formals, body))  =
+          let
+            val alphas = List.map freshtyvar formals
+            val toUpdateGammma = fn (x, y, gamma) => bindtyscheme (x, FORALL ([],y), gamma)
+            val newGamma = ListPair.foldrEq toUpdateGammma Gamma (formals, alphas)
+            val (eTy, resultingConstraint) = typeof (body, newGamma)
+          in
+            (funtype (alphas, eTy), resultingConstraint)
+          end
         | ty (LETX (LET, bs, body))    = raise LeftAsExercise "type for LET"
         | ty (LETX (LETREC, bs, body)) = raise LeftAsExercise "type for LETREC"
 (* type declarations for consistency checking *)

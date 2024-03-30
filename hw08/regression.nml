@@ -1,15 +1,20 @@
+;; Testing 'literal'
 (check-type 3 int)
 (check-type #t bool)
 (check-type 'hello sym)
 
+;; Testing 'if'
 (check-type (if #t 1 2) int)
 (check-type (if #f #t #f) bool)
 (check-type (if #f 'a 'b) sym)
 (check-type-error (if 1 2 3))
 (check-type-error (if #t #t 3))
 
+;; Testing 'begin'
 (check-type (begin (+ 1 2) (if #t #t #f)) bool)
 (check-type-error (begin (if #f 3 #t) (if #t #t #f)))
+
+
 ;; (check-type-error (begin (letstar ([x 5]) (if x #t #f)) (if #t 3 4)))
 
 ;; (check-type (let* ([x 5] [y (+ x 3)]) y) int)
