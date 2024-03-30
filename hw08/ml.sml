@@ -1846,6 +1846,7 @@ fun typeof (e, Gamma) =
             else
               raise TypeError "ill-type"
           end
+        | ty (BEGIN [])                = (unittype, TRIVIAL)
         | ty (BEGIN es)                =  (* es can be empty, raise exception *)
           let val tn = fst (ty (List.last es))
               val resultingConstraint = List.foldl (fn (x, accum) => (accum /\ snd (ty x))) TRIVIAL es

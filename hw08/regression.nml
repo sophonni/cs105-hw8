@@ -11,6 +11,7 @@
 (check-type-error (if #t #t 3))
 
 ;; Testing 'begin'
+(check-type (begin) unit)
 (check-type (begin (+ 1 2) (if #t #t #f)) bool)
 (check-type-error (begin (if #f 3 #t) (if #t #t #f)))
 
