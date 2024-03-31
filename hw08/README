@@ -21,12 +21,15 @@ Time Spent:
     11:30 pm - 1:44 pm
     4:45 pm - 6:20 pm
     6:20 pm - 7:15 pm - self
-    1:20 am - 2:28 - self
-    11:50 am - 
+    1:20 am - 2:28 am - self
+    11:50 am - 4:40 pm
+    4:55 am -  pm - self
 
 Command Reference
-  - mosmlc -I /comp/105/lib -o a.out ml.sml && ./a.out: use to test the intepreter
-  - ./a.out -q < regression.nml:  use to execute written unit tests using the modified intepreter
+  - mosmlc -I /comp/105/lib -o a.out ml.sml && ./a.out: use to test the
+                                                        intepreter
+  - ./a.out -q < regression.nml:  use to execute written unit tests using
+                                  the modified intepreter
   - sml-lint ml.sml
   - submit105-inference
 
@@ -35,6 +38,8 @@ TODOS:
   - re-read spec
   - check and answer missing CQs
   - determine time spent on assignment
-  - fix 80 columns limite
+  - fix 80 columns limit
   - standardize var names - if there's time
   - import written rules as PDF for submission
+  - fix unnecessary parenthesese -- DONE
+  - double check empty list

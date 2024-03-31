@@ -1672,7 +1672,8 @@ fun solve TRIVIAL = idsubst
   | solve(TYCON a ~ CONAPP b) = unsatisfiableEquality (TYCON a, CONAPP b)
   | solve(TYVAR a ~ CONAPP b) =
     let val freeVarSet = freetyvars (CONAPP b)
-        (* this conditional check handle the 1st bullet point mention in the text (pg. 429) *)
+        (* this conditional check handle the 1st bullet point mention
+           in the text (pg. 429) *)
         (* when they mentioned "then", they're just proving that it works *)
     in if not (member a freeVarSet) then
           a |--> CONAPP b
@@ -1685,7 +1686,8 @@ fun solve TRIVIAL = idsubst
     end 
   | solve(CONAPP a ~ TYVAR b) =
       let val freeVarSet = freetyvars (CONAPP a)
-          (* this conditional check handle the 1st bullet point mention in the text (pg. 429) *)
+          (* this conditional check handle the 1st bullet point mention in
+             the text (pg. 429) *)
           (* when they mentioned "then", they're just proving that it works *)
       in if not (member b freeVarSet)then
             b |--> CONAPP a
@@ -1699,7 +1701,8 @@ fun solve TRIVIAL = idsubst
   | solve (CONAPP (a, xs) ~ CONAPP (b, ys)) =
     let val c1 = a ~ b
     in
-      solve (c1 /\ ListPair.foldlEq (fn (x, y, accum) => accum /\ (x ~ y)) TRIVIAL (xs, ys))
+      solve (c1 /\ ListPair.foldlEq (fn (x, y, accum) =>
+                                      accum /\ (x ~ y)) TRIVIAL (xs, ys))
       
       (* raise TypeError "Unsolved-Constraint" *)
     end 
@@ -1711,7 +1714,8 @@ fun hasGoodSolution c = solves (solve c, c) handle TypeError _ => false
 val hasSolution = not o hasNoSolution : con -> bool
 fun solutionEquivalentTo (c, theta) = eqsubst (solve c, theta)
 fun isIdempotent pairs =
-    let fun distinct a' (a, tau) = a <> a' andalso not (member a' (freetyvars tau))
+    let fun distinct a' (a, tau) = a <> a' andalso
+                                    not (member a' (freetyvars tau))
         fun good (prev', (a, tau)::next) =
               List.all (distinct a) prev' andalso List.all (distinct a) next
               andalso good ((a, tau)::prev', next)
@@ -1756,11 +1760,14 @@ val () = Unit.checkAssert "bool ~ 'a is solved by 'a |--> bool"
                                          "'a" |--> booltype))
 
 val () = Unit.checkAssert "conapp ~ tycon can't be solved"
-         (fn () => hasNoSolution (CONAPP (TYCON "list", [TYVAR "a"]) ~ TYCON "int"))
+         (fn () => hasNoSolution (CONAPP (TYCON "list", [TYVAR "a"]) ~
+                                  TYCON "int"))
 val () = Unit.checkAssert " tycon ~ conapp can't be solved"
-         (fn () => hasNoSolution (TYCON "int" ~ CONAPP (TYCON "list", [TYVAR "a"])))
+         (fn () => hasNoSolution (TYCON "int" ~
+                                  CONAPP (TYCON "list", [TYVAR "a"])))
 val () = Unit.checkAssert " tycon ~ conapp can't be solved"
-         (fn () => hasNoSolution (TYCON "a" ~ CONAPP (TYCON "list", [TYVAR "a"])))
+         (fn () => hasNoSolution (TYCON "a" ~
+                                  CONAPP (TYCON "list", [TYVAR "a"])))
 
 val () = Unit.checkAssert " tyvar ~ conapp that can be solve"
          (fn () => hasSolution (TYVAR "a" ~ listtype (TYVAR "j")))
@@ -1792,7 +1799,8 @@ val () = Unit.reportWhenFailures ()
 (* definitions of [[typeof]] and [[typdef]] for \nml\ and \uml 437d *)
 fun typeof (e, Gamma) =
   let
-(* shared definition of [[typesof]], to infer the types of a list of expressions 438a *)
+(* shared definition of [[typesof]], to infer the types of a list of
+   expressions 438a *)
       fun typesof ([],    Gamma) = ([], TRIVIAL)
         | typesof (e::es, Gamma) =
             let val (tau,  c)  = typeof  (e,  Gamma)
@@ -1817,7 +1825,7 @@ fun typeof (e, Gamma) =
             val (vTy, vConst) = literal v
             val (vpTy, vpConst) = literal vp
           in
-              (vpTy,  listtype vTy ~ vpTy /\ vConst /\ vpConst)
+            (vpTy,  listtype vTy ~ vpTy /\ vConst /\ vpConst)
           end
         | literal NIL =  (listtype (freshtyvar ()), TRIVIAL)
         | literal (PRIMITIVE _) = raise BugInTypeInference "not needed"
@@ -1842,57 +1850,89 @@ fun typeof (e, Gamma) =
             ty (LETX (LET, [b], LETX (LETSTAR, bs, body)))
         (* more alternatives for [[ty]] ((prototype)) 438g *)
         | ty (IFX (e1, e2, e3))        = 
-          let val tau1 = ty e1
-              val tau2 = ty e2
-              val tau3 = ty e3
-              val resultingConstraint = conjoinConstraints [snd tau1, snd tau2, snd tau3] 
+          let
+            val tau1 = ty e1
+            val tau2 = ty e2
+            val tau3 = ty e3
+            val resultingConstraint =
+                  conjoinConstraints [snd tau1, snd tau2, snd tau3] 
           in 
-              (fst tau2, resultingConstraint /\ fst tau1 ~ booltype /\ fst tau2 ~ fst tau3)
+            (fst tau2,
+              resultingConstraint /\
+              fst tau1 ~ booltype /\
+              fst tau2 ~ fst tau3)
           end
         | ty (BEGIN [])                = (unittype, TRIVIAL)
         | ty (BEGIN es)                =
-          let val tn = fst (ty (List.last es))
-              val resultingConstraint = List.foldl (fn (x, accum) => accum /\ snd (ty x)) TRIVIAL es
+          let
+            val tn = fst (ty (List.last es))
+            val resultingConstraint = List.foldl (fn (x, accum) =>
+                                                    accum /\ snd (ty x))
+                                                  TRIVIAL es
           in
             (tn, resultingConstraint)
           end
         | ty (LAMBDA (formals, body))  =
           let
             val alphas = List.map freshtyvar formals
-            val toUpdateGammma = fn (x, y, gamma) => bindtyscheme (x, FORALL ([],y), gamma)
-            val newGamma = ListPair.foldrEq toUpdateGammma Gamma (formals, alphas)
+            val toUpdateGammma = fn (x, y, gamma) =>
+                                      bindtyscheme (x, FORALL ([],y), gamma)
+            val newGamma = ListPair.foldrEq
+                            toUpdateGammma
+                            Gamma
+                            (formals, alphas)
             val (eTy, resultingConstraint) = typeof (body, newGamma)
           in
             (funtype (alphas, eTy), resultingConstraint)
           end
         | ty (LETX (LET, bs, body))    =
             let 
-                (* seperate the given 'bs' into a list of 'names' and 'exps' which are the expressions *)
+                (* seperate the given 'bs' into a list of 'names' and
+                'exps' which are the expressions *)
                 val (names, exps) = ListPair.unzip bs
 
-                (* get the type of each expressions and its corresponding constraint *)
+                (* get the type of each expressions and its corresponding
+                  constraint *)
                 val (expsTypeList, expsConstraint ) = typesof (exps, Gamma)
 
-                (* solve the list of constraints in order to generate a single substitution for the whole 'let' expression *)
+                (* solve the list of constraints in order to generate a
+                  single substitution for the whole 'let' expression *)
                 val constraintSubstitution = solve expsConstraint
 
-                (* process of creating a new constraint 'cPrime' for the whole 'let' expression *)
-                (* do so by applying the substitution generated above onto every alphas which are string, and ensure that each α ~ θα *)
-                val alphas = inter (dom constraintSubstitution, freetyvarsGamma Gamma)
-                val toCreateConstraint = (fn (a, xs) => (TYVAR a ~ tysubst constraintSubstitution (TYVAR a)) :: xs)
+                (* process of creating a new constraint 'cPrime' for the
+                  whole 'let' expression *)
+                (* do so by applying the substitution generated above onto
+                  every alphas which are string, and ensure that each α ~ θα *)
+                val alphas = inter (dom constraintSubstitution,
+                                    freetyvarsGamma Gamma)
+                val toCreateConstraint = (fn (a, xs) =>
+                                          (TYVAR a ~ tysubst
+                                            constraintSubstitution (TYVAR a))
+                                          :: xs)
                 val allConstraints = List.foldl toCreateConstraint [] alphas
                 val cPrime = conjoinConstraints allConstraints
 
                 (* process of generating a list of sigmas *)
-                val unionOfGammaAndCPrime = union (freetyvarsGamma Gamma, freetyvarsConstraint cPrime)
-                val toGeneralize = (fn (ty, xs) => (generalize (tysubst constraintSubstitution ty, unionOfGammaAndCPrime)) :: xs)
+                val unionOfGammaAndCPrime = union (freetyvarsGamma Gamma,
+                                                    freetyvarsConstraint cPrime)
+                val toGeneralize = (fn (ty, xs) =>
+                                    (generalize
+                                      (tysubst constraintSubstitution ty,
+                                        unionOfGammaAndCPrime))
+                                    :: xs)
                 val sigmas = List.foldl toGeneralize [] expsTypeList
 
-                (* process of extend the environment 'Gamma' in order to evalute the 'body' of the let expression over *)
-                val toUpdateGammma = (fn (x, sigma, gamma) => bindtyscheme (x, sigma, gamma))
-                val newGamma = ListPair.foldrEq toUpdateGammma Gamma (names, sigmas)
+                (* process of extend the environment 'Gamma' in order to
+                  evalute the 'body' of the let expression over *)
+                val toUpdateGammma = (fn (x, sigma, gamma) =>
+                                      bindtyscheme (x, sigma, gamma))
+                val newGamma = ListPair.foldrEq
+                                toUpdateGammma
+                                Gamma
+                                (names, sigmas)
                 val (eTy, bodyConstraint) = typeof (body, newGamma)
-                val resultingConstraint = conjoinConstraints [cPrime, bodyConstraint]
+                val resultingConstraint =
+                                    conjoinConstraints [cPrime, bodyConstraint]
             in 
               (eTy, resultingConstraint)
             end
@@ -1900,39 +1940,70 @@ fun typeof (e, Gamma) =
           let
             val (names, exps) = ListPair.unzip bs
             val freshAlphas = List.map freshtyvar names
-            val toUpdateGammma = fn (x, y, gamma) => bindtyscheme (x, FORALL ([],y), gamma)
-            val newGamma = ListPair.foldlEq toUpdateGammma Gamma (names, freshAlphas)
+            val toUpdateGammma = fn (x, y, gamma) =>
+                                  bindtyscheme (x, FORALL ([],y), gamma)
+            val newGamma = ListPair.foldlEq
+                           toUpdateGammma
+                           Gamma
+                           (names, freshAlphas)
 
-            (* get the type of each expressions and its corresponding constraint where each of the expression and its type is evaluated and determine using the newly create gamma *)
+            (* get the type of each expressions and its corresponding
+              constraint where each of the expression and its type is
+              evaluated and determine using the newly create gamma *)
             val (expsTypeList, expsConstraint) = typesof (exps, newGamma)
           
-            (* create contraints from each of the taus ~ each of the freshAlphas and conjoin these constraints with the constraint created from the above step *)
+            (* create contraints from each of the taus ~ each of the
+              freshAlphas and conjoin these constraints with the constraint
+              created from the above step *)
             val toCreateConstraint = (fn (tau, alph, xs) => (tau ~ alph) :: xs)
-            val tausAndAlphsConstraints = ListPair.foldlEq toCreateConstraint [] (expsTypeList, freshAlphas)
+            val tausAndAlphsConstraints = ListPair.foldlEq
+                                          toCreateConstraint
+                                          []
+                                          (expsTypeList, freshAlphas)
             val allConstraints = expsConstraint :: tausAndAlphsConstraints
             val cConstraint = conjoinConstraints allConstraints
 
-            (* solve the constraint 'c' to ensure it is satisfied. If satisfied, a substitution is returned *)
+            (* solve the constraint 'c' to ensure it is satisfied. If
+              satisfied, a substitution is returned *)
             val expConstraintSubstitution = solve cConstraint
 
-            (* process of creating a new constraint 'cPrimeConstraint' for the whole 'let' expression *)
-            (* do so by applying the substitution generated above onto every alphas which are string, and ensure that each α ~ θα *)
-            val alphasAfterIntersect = inter (dom expConstraintSubstitution, freetyvarsGamma Gamma)
-            val toCreateConstraint = (fn (a, xs) => ((TYVAR a) ~ tysubst expConstraintSubstitution (TYVAR a)) :: xs)
-            val allConstraints = List.foldl toCreateConstraint [] alphasAfterIntersect
+            (* process of creating a new constraint 'cPrimeConstraint'
+              for the whole 'let' expression *)
+            (* do so by applying the substitution generated above onto every
+              alphas which are string, and ensure that each α ~ θα *)
+            val alphasAfterIntersect = inter (dom expConstraintSubstitution,
+                                              freetyvarsGamma Gamma)
+            val toCreateConstraint = (fn (a, xs) =>
+                                      ((TYVAR a) ~
+                                        tysubst expConstraintSubstitution
+                                          (TYVAR a))
+                                      :: xs)
+            val allConstraints = List.foldl
+                                 toCreateConstraint
+                                 []
+                                 alphasAfterIntersect
             val cPrimeConstraint = conjoinConstraints allConstraints
 
             (* process of generating a list of sigmas *)
-            val unionOfGammaAndCPrime = union (freetyvarsGamma Gamma, freetyvarsConstraint cPrimeConstraint)
-            val toGeneralize = (fn (ty, xs) => (generalize (tysubst expConstraintSubstitution ty, unionOfGammaAndCPrime)) :: xs)
+            val unionOfGammaAndCPrime = union (freetyvarsGamma Gamma,
+                                                freetyvarsConstraint
+                                                  cPrimeConstraint)
+            val toGeneralize = (fn (ty, xs) =>
+                                (generalize
+                                  (tysubst expConstraintSubstitution ty,
+                                    unionOfGammaAndCPrime))
+                                :: xs)
             (* need to use 'foldl' in order to maintain the order *)
             val sigmas = List.foldr toGeneralize [] expsTypeList
 
-            (* process of extend the environment 'Gamma' in order to evalute the 'body' of the let expression over *)
-            val toUpdateGammma = (fn (x, sigma, gamma) => bindtyscheme (x, sigma, gamma))
+            (* process of extend the environment 'Gamma' in order to evalute
+            the 'body' of the let expression over *)
+            val toUpdateGammma = (fn (x, sigma, gamma) =>
+                                  bindtyscheme (x, sigma, gamma))
             val newGamma = ListPair.foldlEq toUpdateGammma Gamma (names, sigmas)
             val (eTy, bodyConstraint) = typeof (body, newGamma)
-            val resultingConstraint = conjoinConstraints [cPrimeConstraint, bodyConstraint]
+            val resultingConstraint =
+                          conjoinConstraints [cPrimeConstraint, bodyConstraint]
 
           in
             (eTy, resultingConstraint)

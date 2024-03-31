@@ -97,7 +97,11 @@
 (check-type-error '((1 #t) (3 4)))
 
 ;; Testing 'map', 'filter', 'exists?', 'foldr'
-(check-principal-type filter (forall ['a] (('a -> bool) (list 'a) -> (list 'a))))
-(check-principal-type map (forall ['a 'b] (('a -> 'b) (list 'a) -> (list 'b))))
-(check-principal-type foldr (forall ['a 'b] (('a 'b -> 'b) 'b (list 'a) -> 'b)) )
-(check-principal-type exists? (forall ['a] (('a -> bool) (list 'a) -> bool)))
+(check-principal-type filter
+    (forall ['a] (('a -> bool) (list 'a) -> (list 'a))))
+(check-principal-type map
+    (forall ['a 'b] (('a -> 'b) (list 'a) -> (list 'b))))
+(check-principal-type foldr
+    (forall ['a 'b] (('a 'b -> 'b) 'b (list 'a) -> 'b)) )
+(check-principal-type exists?
+    (forall ['a] (('a -> bool) (list 'a) -> bool)))
