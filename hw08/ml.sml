@@ -1867,10 +1867,10 @@ fun typeof (e, Gamma) =
                 (* get the type of each expressions and its corresponding constraint *)
                 val expsTyAndConstraintPair =  typesof (exps, Gamma)
                 val expsTypeList =  fst expsTyAndConstraintPair
-                val expsConstraintList = snd expsTyAndConstraintPair
+                val expsConstraint = snd expsTyAndConstraintPair
 
                 (* solve the list of constraints in order to generate a single substitution for the whole 'let' expression *)
-                val constraintSubstitution = solve expsConstraintList
+                val constraintSubstitution = solve expsConstraint
 
                 (* process of creating a new constraint 'cPrime' for the whole 'let' expression *)
                 (* do so by applying the substitution generated above onto every alphas which are string, and ensure that each α ~ θα *)
@@ -1892,7 +1892,48 @@ fun typeof (e, Gamma) =
             in 
               (eTy, resultingConstraint)
             end
-        | ty (LETX (LETREC, bs, body)) = raise LeftAsExercise "type for LETREC"
+        | ty (LETX (LETREC, bs, body)) =
+          let
+            val (names, exps) = ListPair.unzip bs
+            val freshAlphas = List.map freshtyvar names
+            val toUpdateGammma = fn (x, y, gamma) => bindtyscheme (x, FORALL ([],y), gamma)
+            val newGamma = ListPair.foldrEq toUpdateGammma Gamma (names, freshAlphas)
+
+            (* get the type of each expressions and its corresponding constraint where each of the expression and its type is evaluated and determine using the newly create gamma *)
+            val expsTyAndConstraintPair =  typesof (exps, newGamma)
+            val expsTypeList =  fst expsTyAndConstraintPair
+            val expsConstraint = snd expsTyAndConstraintPair
+
+            (* create contraints from each of the taus ~ each of the freshAlphas and conjoin these constraints with the constraint created from the above step *)
+            val toCreateConstraint = (fn (tau, alph, xs) => (tau ~ alph) :: xs)
+            val tausAndAlphsConstraints = ListPair.foldlEq toCreateConstraint [] (expsTypeList, freshAlphas)
+            val allConstraints = expsConstraint :: tausAndAlphsConstraints
+            val cConstraint = conjoinConstraints allConstraints
+
+            (* solve the constraint 'c' to ensure it is satisfied. If satisfied, a substitution is returned *)
+            val constraintSubstitution = solve cConstraint
+
+            (* process of creating a new constraint 'cPrimeConstraint' for the whole 'let' expression *)
+            (* do so by applying the substitution generated above onto every alphas which are string, and ensure that each α ~ θα *)
+            val alphasAfterIntersect = inter ((dom constraintSubstitution), (freetyvarsGamma Gamma))
+            val toCreateConstraint = (fn (a, xs) => (TYVAR a ~ tysubst constraintSubstitution (TYVAR a)) :: xs)
+            val allConstraints = List.foldl toCreateConstraint [] alphasAfterIntersect
+            val cPrimeConstraint = conjoinConstraints allConstraints
+
+            (* process of generating a list of sigmas *)
+            val unionOfGammaAndCPrime = union ((freetyvarsGamma Gamma), (freetyvarsConstraint cPrimeConstraint))
+            val toGeneralize = (fn (ty, xs) => (generalize ((tysubst constraintSubstitution ty), unionOfGammaAndCPrime)) :: xs)
+            val sigmas = List.foldl toGeneralize [] expsTypeList
+
+            (* process of extend the environment 'Gamma' in order to evalute the 'body' of the let expression over *)
+            val toUpdateGammma = (fn (x, sigma, gamma) => bindtyscheme (x, sigma, gamma))
+            val newGamma = ListPair.foldrEq toUpdateGammma Gamma (names, sigmas)
+            val (eTy, bodyConstraint) = typeof (body, newGamma)
+            val resultingConstraint = conjoinConstraints [cPrimeConstraint, bodyConstraint]
+
+          in
+            (eTy, resultingConstraint)
+          end
 (* type declarations for consistency checking *)
 val _ = op typeof  : exp      * type_env -> ty      * con
 val _ = op typesof : exp list * type_env -> ty list * con

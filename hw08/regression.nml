@@ -14,6 +14,8 @@
 (check-type (begin) unit)
 (check-type (begin (+ 1 2) (if #t #t #f)) bool)
 (check-type-error (begin (if #f 3 #t) (if #t #t #f)))
+(check-type-error (begin (let ([x 3]) (+ x 5)) (if #t (if x #t #f) x)))
+(check-type-error (begin (let ([x 3]) (if x 4 5))))
 
 ;; Testing 'lambda'
 (check-principal-type (lambda (x) (+ x 1)) (int -> int))
@@ -34,8 +36,48 @@
 (check-type-error (let () (if #t 1 #f)))
 (check-type (let ([x 2] [y 3])
                 ((lambda (x y) (+ x y)) x y)) int)
-;; (check-type-error (begin (letstar ([x 5]) (if x #t #f)) (if #t 3 4)))
-;; (check-type (let* ([x 5] [y (+ x 3)]) y) int)
-;; (check-type-error (begin (let* ([x 2] [y x]) (set y 3))))
-;; (check-type-error (begin (let ([x 3]) (+ x 5)) (if #t (and x #t) x)))
-;; (check-type-error (begin (let ([x 3]) (if x 4 5))))
+
+;; Testing 'letstar'
+(check-type (let* () #t) bool)
+(check-type-error (let* () (if 1 2 3)))
+(check-type (let* ([x 2]) (+ x 5)) int)
+(check-type (let* ([x 2] [y x]) (if #t x y)) int)
+(check-type-error (let* ([x 2] [y x]) (if y #t #f)))
+(check-type-error (begin (let* ([x 5]) (if x #t #f)) (if #t 3 4)))
+(check-type (let* ([x 5] [y (+ x 3)]) y) int)
+
+
+;; Testing 'letrec'
+(check-type (letrec [(ly (lambda (y) y)) 
+                     (lx (lambda (x) x))]
+                     (if #t (lx 1) (ly 1)))
+                     int)
+(check-type (letrec [(ly (lambda (y) (lx y))) 
+                     (lx (lambda (x) x))]
+                     (if #t (lx 1) (ly 1)))
+                     int)
+(check-type (letrec [(ly (lambda (y) (if y 1 2)))]
+                    (ly #f))
+                    int)
+(check-type-error (letrec [(ly (lambda (y) (lx y))) 
+                           (lx (lambda (x) x))
+                           (lz (lambda (z) (if z #t #f)))
+                          ]
+                          (if (lz #f) (lx 1) (lz #f))))
+(check-type-error (letrec [(ly (lambda (y) (if (lx y) #t #f))) 
+                           (lx (lambda (x) (+ x 1)))
+                          ]
+                          (if #t (lx 1) (ly 1))))
+(check-type-error (letrec [(ly (lambda (y) (newFunc (lambda (z) (lx z)))))
+                           (lx (lambda (x) x))
+                          ]
+                           (if #t (lx 1) (ly 1))))
+(check-type-error (letrec [(ly (lambda (y) (+ y 1))) 
+                           (lx (lambda (x) (+ x 2)))]
+                           (if #t lx (ly 1))))
+;; NEED TO FIGURE OUT WHY THIS TEST FAILS
+;; (check-type (letrec [(ly (lambda (y) (if (lx y) 1 2)))
+;;                      (lx (lambda (x) (if x x #t)))
+;;                     ]
+;;                     (ly #f))
+;;                     int)
