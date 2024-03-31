@@ -1699,7 +1699,7 @@ fun solve TRIVIAL = idsubst
   | solve (CONAPP (a, xs) ~ CONAPP (b, ys)) =
     let val c1 = a ~ b
     in
-      solve (c1 /\ ListPair.foldlEq (fn (x, y, accum) => (accum /\ (x ~ y))) TRIVIAL (xs, ys))
+      solve (c1 /\ ListPair.foldlEq (fn (x, y, accum) => accum /\ (x ~ y)) TRIVIAL (xs, ys))
       
       (* raise TypeError "Unsolved-Constraint" *)
     end 
@@ -1747,7 +1747,7 @@ val () = Unit.checkAssert "bool ~ bool can be solved"
          (fn () => hasNoSolution (listtype booltype ~ booltype))
 
 val () = Unit.checkAssert "trival"
-         (fn () => hasSolution (TRIVIAL)) 
+         (fn () => hasSolution TRIVIAL) 
 
 val () = Unit.checkAssert "bool ~ bool is solved by the identity substitution"
          (fn () => solutionEquivalentTo (booltype ~ booltype, idsubst))
@@ -1819,7 +1819,7 @@ fun typeof (e, Gamma) =
           in
               (vpTy,  listtype vTy ~ vpTy /\ vConst /\ vpConst)
           end
-        | literal NIL =  ((listtype (freshtyvar ())), TRIVIAL)
+        | literal NIL =  (listtype (freshtyvar ()), TRIVIAL)
         | literal (PRIMITIVE _) = raise BugInTypeInference "not needed"
         | literal (CLOSURE _ ) = raise BugInTypeInference "not needed"
 
@@ -1852,7 +1852,7 @@ fun typeof (e, Gamma) =
         | ty (BEGIN [])                = (unittype, TRIVIAL)
         | ty (BEGIN es)                =
           let val tn = fst (ty (List.last es))
-              val resultingConstraint = List.foldl (fn (x, accum) => (accum /\ snd (ty x))) TRIVIAL es
+              val resultingConstraint = List.foldl (fn (x, accum) => accum /\ snd (ty x)) TRIVIAL es
           in
             (tn, resultingConstraint)
           end
@@ -1878,14 +1878,14 @@ fun typeof (e, Gamma) =
 
                 (* process of creating a new constraint 'cPrime' for the whole 'let' expression *)
                 (* do so by applying the substitution generated above onto every alphas which are string, and ensure that each α ~ θα *)
-                val alphas = inter ((dom constraintSubstitution), (freetyvarsGamma Gamma))
+                val alphas = inter (dom constraintSubstitution, freetyvarsGamma Gamma)
                 val toCreateConstraint = (fn (a, xs) => (TYVAR a ~ tysubst constraintSubstitution (TYVAR a)) :: xs)
                 val allConstraints = List.foldl toCreateConstraint [] alphas
                 val cPrime = conjoinConstraints allConstraints
 
                 (* process of generating a list of sigmas *)
-                val unionOfGammaAndCPrime = union ((freetyvarsGamma Gamma), (freetyvarsConstraint cPrime))
-                val toGeneralize = (fn (ty, xs) => (generalize ((tysubst constraintSubstitution ty), unionOfGammaAndCPrime)) :: xs)
+                val unionOfGammaAndCPrime = union (freetyvarsGamma Gamma, freetyvarsConstraint cPrime)
+                val toGeneralize = (fn (ty, xs) => (generalize (tysubst constraintSubstitution ty, unionOfGammaAndCPrime)) :: xs)
                 val sigmas = List.foldl toGeneralize [] expsTypeList
 
                 (* process of extend the environment 'Gamma' in order to evalute the 'body' of the let expression over *)
@@ -1917,14 +1917,14 @@ fun typeof (e, Gamma) =
 
             (* process of creating a new constraint 'cPrimeConstraint' for the whole 'let' expression *)
             (* do so by applying the substitution generated above onto every alphas which are string, and ensure that each α ~ θα *)
-            val alphasAfterIntersect = inter ((dom expConstraintSubstitution), (freetyvarsGamma Gamma))
+            val alphasAfterIntersect = inter (dom expConstraintSubstitution, freetyvarsGamma Gamma)
             val toCreateConstraint = (fn (a, xs) => ((TYVAR a) ~ tysubst expConstraintSubstitution (TYVAR a)) :: xs)
             val allConstraints = List.foldl toCreateConstraint [] alphasAfterIntersect
             val cPrimeConstraint = conjoinConstraints allConstraints
 
             (* process of generating a list of sigmas *)
-            val unionOfGammaAndCPrime = union ((freetyvarsGamma Gamma), (freetyvarsConstraint cPrimeConstraint))
-            val toGeneralize = (fn (ty, xs) => (generalize ((tysubst expConstraintSubstitution ty), unionOfGammaAndCPrime)) :: xs)
+            val unionOfGammaAndCPrime = union (freetyvarsGamma Gamma, freetyvarsConstraint cPrimeConstraint)
+            val toGeneralize = (fn (ty, xs) => (generalize (tysubst expConstraintSubstitution ty, unionOfGammaAndCPrime)) :: xs)
             (* need to use 'foldl' in order to maintain the order *)
             val sigmas = List.foldr toGeneralize [] expsTypeList
 
@@ -2782,16 +2782,35 @@ val primitiveBasis =
                                    | _   => raise BugInTypeInference
                                                      "car applied to non-list"),
                                funtype ([listtype alpha], alpha)) ::
-                     ("cdr",   unaryOp
-                                 (fn (PAIR (_, cdr)) => cdr 
-                                   | NIL => raise RuntimeError
-                                                     "cdr applied to empty list"
-                                   | _   => raise BugInTypeInference
-                                                     "cdr applied to non-list"),
-                               funtype ([listtype alpha], listtype alpha)) :: 
-                     [])
-  end
-val predefined_included = false
+                    ("cdr",   unaryOp
+                                (fn (PAIR (_, cdr)) => cdr 
+                                  | NIL => raise RuntimeError
+                                                "cdr applied to empty list"
+                                  | _   => raise BugInTypeInference
+                                                "cdr applied to non-list"),
+                              funtype ([listtype alpha], listtype alpha))
+                                                                        ::
+                    ("pair",  binaryOp (fn (a, b) => PAIR (a, b)),
+                              funtype ([alpha, beta]
+                                      , pairtype (alpha, beta)))
+                                                                        ::
+                    ("fst",  unaryOp 
+                                (fn (PAIR (a, b)) => a
+                                  | _ => raise RuntimeError
+                                              "fst applies to non-pair"),
+                              funtype ([pairtype (alpha, beta)]
+                                      , alpha))
+                                                                        ::
+                    ("snd",  unaryOp 
+                                (fn (PAIR (a, b)) => b
+                                  | _ => raise RuntimeError
+                                              "snd applies to non-pair"),
+                              funtype ([pairtype (alpha, beta)]
+                                      , beta))
+                                                                        ::
+                    [])
+                      end
+val predefined_included = true
 val predefs = if not predefined_included then [] else
                [ ";  predefined {\\nml} functions S423b "
                , "(define bind (x y alist)"
