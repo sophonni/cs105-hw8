@@ -295,20 +295,22 @@ outputs of type inference for expression (+ 3 2).
         arguments to the function.) 
         In judgment C, Γ ⊢ e : τ, what does the type checker output for τ?
 
-        > 'c
+        > 'd (fresh variable type) since it's unclear as to what the
+        function 'f' returns.
 
         And what does the type checker output for C?
 
-        > c =  α₁ ~ int /\ α₂ ~ bool
+        > C =  ('a x 'b -> 'c) ~ (int x bool -> 'd)
 
     (b) Assume that `f` is bound in Γ to the type scheme `∀.'a`.
         In judgment C, Γ ⊢ e : τ, what does the type checker output for τ?
 
-        > 'd (fresh variable)
+        > 'd (fresh variable type) b/c here the type ''a × 'b → 'c' can
+        also be represent as any type i.e ''a' type.
 
         And what does the type checker output for C?
 
-        > 'a (TODO: not sure)
+        >  C = ('a x 'b -> 'c) ~ (int x bool -> 'd)
 
     _You are ready for some of the easier parts of exercise 3._
 
@@ -370,19 +372,20 @@ references to that that function in this reading call it `too-poly`.
 
     (a) If τ' is β list, what are its free type variables?
 
-        > (TODO: come back)
+        > β since upon creating an empty list, initially, empty list be a
+        list of any type 'β'.
 
 
     (b) What set in this example plays the role of `{ α₁, ..., αₙ }` in Milner's
         Let, which is ftv(τ')-ftv(Γ)?
 
-        > {} - {β} (TODO: come back)
+        > {β} 
     
 
     (c) What is the *type scheme* to which `empty-list` (playing x) is 
         bound in the extended environment which is used to check $e$?
 
-        > (TODO: come back)
+        > (forall [β] (list β))
 
 
     _You are ready for all of exercise 3._
