@@ -1797,6 +1797,11 @@ val () = Unit.reportWhenFailures ()
 (* exhaustiveness analysis for {\uml} S435b *)
 (* filled in when implementing uML *)
 (* definitions of [[typeof]] and [[typdef]] for \nml\ and \uml 437d *)
+(* Function: ty
+ * Purpose:  Given an expression, a type environment (Gamma), type check the
+ *           expression within the given environments and return
+ *           a tuple of the resulting type and its corresponding constraint.
+ *)
 fun typeof (e, Gamma) =
   let
 (* shared definition of [[typesof]], to infer the types of a list of
@@ -1817,6 +1822,9 @@ fun typeof (e, Gamma) =
           | PRIMITIVE of primop *)
           
 (* function [[literal]], to infer the type of a literal constant ((prototype)) 438b *)
+(* Function: literal
+ * Purpose:  Given a LITERAL, type check that literal and return
+ *           the resulting type and the corresponding satisfied constraint *)
       fun literal (NUM _)   = (inttype, TRIVIAL)
         | literal (BOOLV _) = (booltype, TRIVIAL)
         | literal (SYM _)   = (symtype, TRIVIAL)
